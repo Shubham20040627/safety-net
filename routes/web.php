@@ -1,0 +1,51 @@
+<?php
+
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\AdminController;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/', function () {
+    return view('welcome');
+});
+
+// Authenticated Routes
+Route::middleware(['auth'])->group(function () {
+    
+    // Profile Routes (From Breeze)
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Approved User Routes
+    Route::middleware(['approved'])->group(function () {
+        
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+        // Incident Reports
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/create', [ReportController::class, 'create'])->name('reports.create');
+        Route::post('/reports', [ReportController::class, 'store'])->name('reports.store');
+        Route::get('/my-reports', [ReportController::class, 'myReports'])->name('reports.my-reports');
+
+        // Admin Only Routes
+        Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
+            Route::get('/users', [AdminController::class, 'users'])->name('users');
+            Route::post('/users/{user}/approve', [AdminController::class, 'approveUser'])->name('users.approve');
+            Route::post('/users/{user}/reject', [AdminController::class, 'rejectUser'])->name('users.reject');
+            
+            Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
+            Route::post('/reports/{report}/resolve', [AdminController::class, 'resolveReport'])->name('reports.resolve');
+            Route::delete('/reports/{report}', [AdminController::class, 'deleteReport'])->name('reports.delete');
+        });
+    });
+});
+
+require __DIR__.'/auth.php';
