@@ -40,7 +40,10 @@ class DashboardController extends Controller
 
             // --- Advanced Predictive Analytics ---
             // 1. Hourly Distribution (Find Peak Hours) for this neighborhood
-            $hourlyData = (clone $neighborhoodReports)->selectRaw('HOUR(datetime) as hour, COUNT(*) as count')
+            $driverName = \Illuminate\Support\Facades\DB::connection()->getDriverName();
+            $hourField = $driverName === 'pgsql' ? 'EXTRACT(HOUR FROM datetime)' : 'HOUR(datetime)';
+            
+            $hourlyData = (clone $neighborhoodReports)->selectRaw("{$hourField} as hour, COUNT(*) as count")
                 ->groupBy('hour')
                 ->orderBy('hour')
                 ->pluck('count', 'hour')

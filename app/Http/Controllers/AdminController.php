@@ -138,7 +138,10 @@ class AdminController extends Controller
         }
 
         // 4. Hourly Peak Distribution
-        $hourlyData = (clone $baseQuery)->selectRaw('HOUR(datetime) as hour, COUNT(*) as count')
+        $driverName = \Illuminate\Support\Facades\DB::connection()->getDriverName();
+        $hourField = $driverName === 'pgsql' ? 'EXTRACT(HOUR FROM datetime)' : 'HOUR(datetime)';
+
+        $hourlyData = (clone $baseQuery)->selectRaw("{$hourField} as hour, COUNT(*) as count")
             ->groupBy('hour')
             ->orderBy('hour')
             ->pluck('count', 'hour')
