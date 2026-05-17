@@ -11,9 +11,18 @@
             <h1 class="text-3xl font-bold font-serif-custom text-slate-900 leading-tight">Super Admin Dashboard</h1>
             <p class="text-slate-500 mt-1">Oversee, authorize, and moderate neighborhood administrative nodes.</p>
         </div>
-        <div class="flex items-center gap-3">
-            <span class="inline-flex h-3.5 w-3.5 rounded-full bg-emerald-500 animate-ping"></span>
-            <span class="text-sm font-semibold text-slate-600">System Secure & Online</span>
+        <div class="flex flex-wrap items-center gap-4">
+            <!-- Master SOS Reset -->
+            <form action="{{ route('superadmin.reset-sos') }}" method="POST" class="inline m-0 p-0" onsubmit="return confirm('Are you sure you want to force resolve and clear all active neighborhood SOS emergency alerts?');">
+                @csrf
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-widest text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition shadow-md hover:shadow-rose-500/25 border border-rose-500 cursor-pointer">
+                    🚨 Reset Active SOS Signals
+                </button>
+            </form>
+            <div class="flex items-center gap-2.5">
+                <span class="inline-flex h-3.5 w-3.5 rounded-full bg-emerald-500 animate-ping"></span>
+                <span class="text-sm font-semibold text-slate-600">System Secure & Online</span>
+            </div>
         </div>
     </div>
 

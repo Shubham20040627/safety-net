@@ -20,8 +20,9 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
-        // Get all admin neighborhoods
+        // Get all admin neighborhoods (excluding Greenwood Valley Safety Corridor)
         $neighborhoods = User::where('role', 'admin')
+            ->where('neighborhood_name', '!=', 'Greenwood Valley Safety Corridor')
             ->pluck('neighborhood_name')
             ->unique()
             ->filter()

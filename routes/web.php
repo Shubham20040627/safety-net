@@ -76,6 +76,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/users/{user}/approve', [\App\Http\Controllers\SuperAdminController::class, 'approveAdmin'])->name('approve');
             Route::post('/users/{user}/reject', [\App\Http\Controllers\SuperAdminController::class, 'rejectAdmin'])->name('reject');
             Route::delete('/users/{user}', [\App\Http\Controllers\SuperAdminController::class, 'deleteAdmin'])->name('delete');
+            Route::post('/reset-sos', [\App\Http\Controllers\SuperAdminController::class, 'resetSosAlerts'])->name('reset-sos');
         });
     });
     Route::post('/ai/chat', [App\Http\Controllers\ChatController::class, 'chat'])->name('ai.chat');

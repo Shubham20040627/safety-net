@@ -72,4 +72,15 @@ class SuperAdminController extends Controller
 
         return back()->with('success', "Neighborhood Admin account '{$adminName}' has been permanently deleted from the safety network.");
     }
+
+    /**
+     * Force resolve all active or acknowledged SOS alerts in the system.
+     */
+    public function resetSosAlerts()
+    {
+        \App\Models\SosAlert::whereIn('status', ['active', 'acknowledged'])
+            ->update(['status' => 'resolved']);
+
+        return back()->with('success', 'All active neighborhood Emergency SOS signals have been successfully resolved and cleared.');
+    }
 }
