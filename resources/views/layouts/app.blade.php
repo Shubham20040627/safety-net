@@ -188,7 +188,7 @@
             <div @mouseenter="sidebarHovered = true" 
                  @mouseleave="sidebarHovered = false"
                  :class="sidebarHovered ? 'translate-x-0' : '-translate-x-full'"
-                 class="fixed top-0 left-0 h-screen w-64 glass-sidebar text-white z-50 shadow-2xl border-r border-white/10 transition-transform duration-300 ease-in-out hidden md:block transform -translate-x-full overflow-y-auto">
+                 class="fixed top-0 left-0 h-screen w-64 glass-sidebar text-white z-50 shadow-2xl border-r border-white/10 transition-transform duration-300 ease-in-out hidden md:block overflow-y-auto transform">
                 <div class="p-6 border-b border-slate-800">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-white text-slate-900 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
@@ -311,7 +311,7 @@
                         </button>
 
                         <!-- Desktop Hover Sidebar Trigger (Three Dots) -->
-                        <button @mouseenter="sidebarHovered = true" class="hidden md:flex p-2.5 rounded-xl bg-slate-900 text-white hover:bg-indigo-600 transition shadow flex-shrink-0 items-center justify-center cursor-pointer border border-slate-700/50">
+                        <button @mouseenter="sidebarHovered = true" @click="sidebarHovered = !sidebarHovered" class="hidden md:flex p-2.5 rounded-xl bg-slate-900 text-white hover:bg-indigo-600 transition shadow flex-shrink-0 items-center justify-center cursor-pointer border border-slate-700/50">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
                             </svg>
