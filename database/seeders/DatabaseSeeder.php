@@ -19,6 +19,18 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('password'),
             'role' => 'admin',
             'status' => 'approved',
+            'neighborhood_name' => 'Greenwood Valley Safety Corridor',
+            'neighborhood_lat' => 28.6139,
+            'neighborhood_lng' => 77.2090,
+        ]);
+
+        // Create Super Admin User
+        \App\Models\User::create([
+            'name' => 'Master Super Admin',
+            'email' => 'superadmin@safety.com',
+            'password' => bcrypt('password'),
+            'role' => 'super_admin',
+            'status' => 'approved',
         ]);
 
         // Create Regular User
@@ -28,6 +40,9 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('password'),
             'role' => 'user',
             'status' => 'approved',
+            'neighborhood_name' => 'Greenwood Valley Safety Corridor',
+            'neighborhood_lat' => 28.6139,
+            'neighborhood_lng' => 77.2090,
         ]);
 
         // Create Sample Reports

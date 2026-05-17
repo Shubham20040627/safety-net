@@ -61,6 +61,24 @@
                                     </form>
                                 @endif
                                 
+                                @if($user->status === 'approved' && $user->role === 'user')
+                                    <form action="{{ route('admin.users.make-responder', $user) }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">
+                                            Make Responder
+                                        </button>
+                                    </form>
+                                @endif
+
+                                @if($user->status === 'approved' && $user->role === 'responder')
+                                    <form action="{{ route('admin.users.remove-responder', $user) }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="bg-slate-500 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">
+                                            Remove Responder
+                                        </button>
+                                    </form>
+                                @endif
+
                                 @if($user->status !== 'rejected')
                                     <form action="{{ route('admin.users.reject', $user) }}" method="POST">
                                         @csrf

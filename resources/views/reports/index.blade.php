@@ -63,7 +63,21 @@
     </div>
     <!-- Global Incidents Map -->
     <div class="bg-white p-4 rounded-xl shadow-md border border-gray-100">
-        <h3 class="text-lg font-bold text-gray-800 mb-3">Incident Map View</h3>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+            <h3 class="text-lg font-bold text-gray-800">Incident Map View</h3>
+            <!-- Style Switcher Buttons -->
+            <div class="flex gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold border border-slate-200/50 self-start sm:self-auto shadow-sm">
+                <button type="button" onclick="switchMapStyle('streets-v2', this)" class="map-style-btn px-3 py-1.5 rounded-lg transition bg-white text-slate-900 shadow-sm cursor-pointer">
+                    🗺️ Streets
+                </button>
+                <button type="button" onclick="switchMapStyle('outdoor-v2', this)" class="map-style-btn px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-950 transition cursor-pointer">
+                    🏔️ 3D Terrain
+                </button>
+                <button type="button" onclick="switchMapStyle('hybrid', this)" class="map-style-btn px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-950 transition cursor-pointer">
+                    🛰️ Satellite
+                </button>
+            </div>
+        </div>
         <div id="global-map" class="w-full border border-gray-200"></div>
     </div>
 
@@ -179,12 +193,17 @@
             // Get reports data from backend
             var reports = @json($reports->items());
 
-            // Initialize MapLibre Map with Google Streets style using your MapTiler Key
+            // Geofence Configuration from backend
+            var neighborhoodLat = {{ $neighborhoodLat }};
+            var neighborhoodLng = {{ $neighborhoodLng }};
+            var neighborhoodBoundaryJson = {!! $neighborhoodBoundary ? $neighborhoodBoundary : 'null' !!};
+
+            // Initialize MapLibre Map with Google Streets style using your MapTiler Key centered on neighborhood center
             var map = new maplibregl.Map({
                 container: 'global-map',
                 style: 'https://api.maptiler.com/maps/streets-v2/style.json?key={{ config('services.maptiler.key') }}', 
-                center: [-74.0060, 40.7128], // [Lng, Lat] default New York
-                zoom: 12,
+                center: [neighborhoodLng, neighborhoodLat], // [Lng, Lat]
+                zoom: 14,
                 pitch: 45, // Tilted 3D perspective by default
                 bearing: -17.6
             });
@@ -192,9 +211,12 @@
             // Add smooth navigation controls (zoom buttons)
             map.addControl(new maplibregl.NavigationControl());
 
-            // Enable 3D Buildings on load when zooming in close
-            map.on('load', function () {
-                var layers = map.getStyle().layers;
+            // Helper function to setup layers dynamically
+            function setupLayers() {
+                var style = map.getStyle();
+                if (!style || !style.layers) return;
+                
+                var layers = style.layers;
                 var labelLayerId;
                 for (var i = 0; i < layers.length; i++) {
                     if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
@@ -203,28 +225,101 @@
                     }
                 }
 
-                map.addLayer({
-                    'id': '3d-buildings',
-                    'source': 'openmaptiles',
-                    'source-layer': 'building',
-                    'type': 'fill-extrusion',
-                    'minzoom': 14,
-                    'paint': {
-                        'fill-extrusion-color': '#e2e8f0',
-                        'fill-extrusion-height': [
-                            'interpolate', ['linear'], ['zoom'],
-                            14, 0,
-                            14.5, ['get', 'render_height']
-                        ],
-                        'fill-extrusion-base': [
-                            'interpolate', ['linear'], ['zoom'],
-                            14, 0,
-                            14.5, ['get', 'render_min_height']
-                        ],
-                        'fill-extrusion-opacity': 0.8
+                // Add 3D Buildings (Only on streets-v2 and darkmatter styles, satellite style doesn't use building vector data directly)
+                var currentStyle = style.name || '';
+                if (!map.getLayer('3d-buildings') && !currentStyle.toLowerCase().includes('hybrid') && map.getSource('openmaptiles')) {
+                    try {
+                        map.addLayer({
+                            'id': '3d-buildings',
+                            'source': 'openmaptiles',
+                            'source-layer': 'building',
+                            'type': 'fill-extrusion',
+                            'minzoom': 14,
+                            'paint': {
+                                'fill-extrusion-color': '#e2e8f0',
+                                'fill-extrusion-height': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    14, 0,
+                                    14.5, ['get', 'render_height']
+                                ],
+                                'fill-extrusion-base': [
+                                    'interpolate', ['linear'], ['zoom'],
+                                    14, 0,
+                                    14.5, ['get', 'render_min_height']
+                                ],
+                                'fill-extrusion-opacity': 0.8
+                            }
+                        }, labelLayerId);
+                    } catch (e) {
+                        console.warn("Could not load 3D buildings layer:", e);
                     }
-                }, labelLayerId);
+                }
+
+                // Add Highlighted Admin Neighborhood Polygon Layer if defined
+                if (neighborhoodBoundaryJson && !map.getSource('neighborhood-boundary')) {
+                    map.addSource('neighborhood-boundary', {
+                        type: 'geojson',
+                        data: neighborhoodBoundaryJson
+                    });
+
+                    // Semi-transparent royal indigo overlay
+                    map.addLayer({
+                        id: 'boundary-fill',
+                        type: 'fill',
+                        source: 'neighborhood-boundary',
+                        paint: {
+                            'fill-color': '#4f46e5',
+                            'fill-opacity': 0.22
+                        }
+                    });
+
+                    // Thicker vibrant neon border line
+                    map.addLayer({
+                        id: 'boundary-line',
+                        type: 'line',
+                        source: 'neighborhood-boundary',
+                        paint: {
+                            'line-color': '#6366f1',
+                            'line-width': 4
+                        }
+                    });
+                }
+            }
+
+            // Setup layers automatically when style loads or changes
+            map.on('style.load', function () {
+                setupLayers();
             });
+
+            // Initial geofence boundary zoom fitting
+            map.on('load', function () {
+                if (neighborhoodBoundaryJson) {
+                    try {
+                        var coordinates = neighborhoodBoundaryJson.features[0].geometry.coordinates[0];
+                        var bounds = coordinates.reduce(function (bounds, coord) {
+                            return bounds.extend(coord);
+                        }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+
+                        map.fitBounds(bounds, {
+                            padding: 40,
+                            maxZoom: 16
+                        });
+                    } catch (err) {
+                        console.error('Error fitting bounds:', err);
+                    }
+                }
+            });
+
+            // Global switcher function
+            window.switchMapStyle = function(styleName, btnElement) {
+                map.setStyle('https://api.maptiler.com/maps/' + styleName + '/style.json?key={{ config('services.maptiler.key') }}');
+
+                // Update active button styles
+                document.querySelectorAll('.map-style-btn').forEach(function(btn) {
+                    btn.className = 'map-style-btn px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-950 transition cursor-pointer';
+                });
+                btnElement.className = 'map-style-btn px-3 py-1.5 rounded-lg transition bg-white text-slate-900 shadow-sm cursor-pointer';
+            };
 
             var bounds = new maplibregl.LngLatBounds();
             var hasCoords = false;

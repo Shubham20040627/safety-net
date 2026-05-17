@@ -30,6 +30,9 @@ class SosAlertController extends Controller
             'status' => 'active',
         ]);
 
+        // Fire real-time SOS broadcast
+        event(new \App\Events\SosAlertBroadcast($alert));
+
         return response()->json([
             'success' => true,
             'message' => 'Emergency SOS alert broadcasted successfully.',
@@ -42,8 +45,13 @@ class SosAlertController extends Controller
      */
     public function active()
     {
+        $neighborhoodName = auth()->user()->neighborhood_name;
+
         $alerts = SosAlert::where('status', 'active')
             ->where('user_id', '!=', auth()->id())
+            ->whereHas('user', function($query) use ($neighborhoodName) {
+                $query->where('neighborhood_name', $neighborhoodName);
+            })
             ->with('user')
             ->latest()
             ->get();

@@ -20,7 +20,14 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
-        return view('auth.register');
+        // Get all admin neighborhoods
+        $neighborhoods = User::where('role', 'admin')
+            ->pluck('neighborhood_name')
+            ->unique()
+            ->filter()
+            ->values();
+
+        return view('auth.register', compact('neighborhoods'));
     }
 
     /**
@@ -33,13 +40,61 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'password' => ['required', Rules\Password::defaults()],
+            'neighborhood_name' => ['required', 'string', 'max:255'],
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'neighborhood_name' => $request->neighborhood_name,
+            'role' => 'user',
+            'status' => 'pending', // Requires local Admin approval to gain access!
+        ]);
+
+        event(new Registered($user));
+
+        Auth::login($user);
+
+        return redirect(RouteServiceProvider::HOME);
+    }
+
+    /**
+     * Display the admin registration view.
+     */
+    public function createAdmin(): View
+    {
+        return view('auth.admin-register');
+    }
+
+    /**
+     * Handle an incoming admin registration request.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    public function storeAdmin(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'password' => ['required', Rules\Password::defaults()],
+            'neighborhood_name' => ['required', 'string', 'max:255'],
+            'neighborhood_lat' => ['required', 'numeric', 'between:-90,90'],
+            'neighborhood_lng' => ['required', 'numeric', 'between:-180,180'],
+            'neighborhood_boundary' => ['nullable', 'string'],
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'admin',
+            'status' => 'pending', // Requires master approval
+            'neighborhood_name' => $request->neighborhood_name,
+            'neighborhood_lat' => $request->neighborhood_lat,
+            'neighborhood_lng' => $request->neighborhood_lng,
+            'neighborhood_boundary' => $request->neighborhood_boundary,
         ]);
 
         event(new Registered($user));

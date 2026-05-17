@@ -12,7 +12,15 @@ class AnnouncementController extends Controller
      */
     public function publicIndex()
     {
-        $announcements = Announcement::active()->latest()->paginate(15);
+        $neighborhoodName = auth()->user()->neighborhood_name;
+
+        $announcements = Announcement::active()
+            ->whereHas('user', function($query) use ($neighborhoodName) {
+                $query->where('neighborhood_name', $neighborhoodName);
+            })
+            ->latest()
+            ->paginate(15);
+
         return view('announcements.index', compact('announcements'));
     }
 
@@ -21,7 +29,14 @@ class AnnouncementController extends Controller
      */
     public function index()
     {
-        $announcements = Announcement::latest()->paginate(10);
+        $neighborhoodName = auth()->user()->neighborhood_name;
+
+        $announcements = Announcement::whereHas('user', function($query) use ($neighborhoodName) {
+                $query->where('neighborhood_name', $neighborhoodName);
+            })
+            ->latest()
+            ->paginate(10);
+
         return view('admin.announcements.index', compact('announcements'));
     }
 
@@ -49,6 +64,9 @@ class AnnouncementController extends Controller
 
         Announcement::create($validated);
 
+        // Clear dashboard cache so new announcements appear instantly
+        cache()->forget("dashboard_stats_" . auth()->user()->neighborhood_name);
+
         return redirect()->route('admin.announcements.index')->with('success', 'Announcement created successfully.');
     }
 
@@ -58,6 +76,10 @@ class AnnouncementController extends Controller
     public function destroy(Announcement $announcement)
     {
         $announcement->delete();
+
+        // Clear dashboard cache so deleted announcements disappear instantly
+        cache()->forget("dashboard_stats_" . auth()->user()->neighborhood_name);
+
         return redirect()->route('admin.announcements.index')->with('success', 'Announcement deleted successfully.');
     }
 }

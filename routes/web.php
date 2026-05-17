@@ -38,7 +38,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/reports/create', [ReportController::class, 'create'])->name('reports.create');
         Route::post('/reports', [ReportController::class, 'store'])->name('reports.store');
         Route::get('/my-reports', [ReportController::class, 'myReports'])->name('reports.my-reports');
+        Route::get('/reports/assignments', [ReportController::class, 'assignments'])->name('reports.assignments');
+        Route::post('/reports/{report}/resolve-assigned', [ReportController::class, 'resolveAssigned'])->name('reports.resolve-assigned');
+        Route::post('/reports/{report}/volunteer', [ReportController::class, 'volunteer'])->name('reports.volunteer');
         Route::get('/reports/{report}', [ReportController::class, 'show'])->name('reports.show');
+        Route::get('/reports/{report}/pdf', [ReportController::class, 'downloadPDF'])->name('reports.pdf');
+        Route::get('/heatmap', [ReportController::class, 'heatmap'])->name('reports.heatmap');
 
         // Emergency SOS Alerts
         Route::post('/sos', [SosAlertController::class, 'store'])->name('sos.store');
@@ -49,18 +54,31 @@ Route::middleware(['auth'])->group(function () {
 
         // Admin Only Routes
         Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
+            Route::get('/analytics', [AdminController::class, 'analytics'])->name('analytics');
             Route::get('/users', [AdminController::class, 'users'])->name('users');
             Route::post('/users/{user}/approve', [AdminController::class, 'approveUser'])->name('users.approve');
             Route::post('/users/{user}/reject', [AdminController::class, 'rejectUser'])->name('users.reject');
+            Route::post('/users/{user}/make-responder', [AdminController::class, 'makeResponder'])->name('users.make-responder');
+            Route::post('/users/{user}/remove-responder', [AdminController::class, 'removeResponder'])->name('users.remove-responder');
             
             Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
             Route::post('/reports/{report}/resolve', [AdminController::class, 'resolveReport'])->name('reports.resolve');
+            Route::post('/reports/{report}/assign-responder', [AdminController::class, 'assignResponder'])->name('reports.assign-responder');
             Route::delete('/reports/{report}', [AdminController::class, 'deleteReport'])->name('reports.delete');
             
             // Announcements
             Route::resource('announcements', \App\Http\Controllers\AnnouncementController::class)->except(['show', 'edit', 'update']);
         });
+
+        // Super Admin Only Routes
+        Route::middleware(['super_admin'])->prefix('super-admin')->name('superadmin.')->group(function () {
+            Route::get('/dashboard', [\App\Http\Controllers\SuperAdminController::class, 'index'])->name('dashboard');
+            Route::post('/users/{user}/approve', [\App\Http\Controllers\SuperAdminController::class, 'approveAdmin'])->name('approve');
+            Route::post('/users/{user}/reject', [\App\Http\Controllers\SuperAdminController::class, 'rejectAdmin'])->name('reject');
+            Route::delete('/users/{user}', [\App\Http\Controllers\SuperAdminController::class, 'deleteAdmin'])->name('delete');
+        });
     });
+    Route::post('/ai/chat', [App\Http\Controllers\ChatController::class, 'chat'])->name('ai.chat');
 });
 
 require __DIR__.'/auth.php';

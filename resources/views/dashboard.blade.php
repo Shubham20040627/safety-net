@@ -73,7 +73,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Incidents</p>
-                    <h3 class="text-4xl font-black text-slate-900 mt-2 font-serif-custom">{{ $totalReports }}</h3>
+                    <h3 class="text-4xl font-black text-slate-900 mt-2 font-serif-custom counter" data-target="{{ $totalReports }}">0</h3>
                 </div>
                 <div class="p-3 bg-indigo-50 rounded-xl text-indigo-600 border border-indigo-100/40">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -95,7 +95,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">My Contributions</p>
-                    <h3 class="text-4xl font-black text-slate-900 mt-2 font-serif-custom">{{ $myReports }}</h3>
+                    <h3 class="text-4xl font-black text-slate-900 mt-2 font-serif-custom counter" data-target="{{ $myReports }}">0</h3>
                 </div>
                 <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100/40">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -136,30 +136,74 @@
         </div>
     </div>
 
-    <!-- Analytics Charts -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Incident Types Chart -->
-        <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition duration-300">
-            <h3 class="text-lg font-black text-slate-950 font-serif-custom mb-6 flex items-center gap-2">
-                <span class="h-3.5 w-1.5 bg-indigo-600 rounded-full"></span>
-                Incident Breakdown
-            </h3>
-            <div class="relative h-64 w-full flex justify-center">
-                <canvas id="typeChart"></canvas>
+    <!-- Safety Intelligence & Predictive Insights -->
+    <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-xl border border-slate-800 mb-8 relative overflow-hidden">
+        <div class="relative z-10 flex flex-wrap items-center justify-between gap-6">
+            <div class="flex-1 min-w-[300px]">
+                <h3 class="text-xl font-black font-serif-custom flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Safety Intelligence
+                </h3>
+                <p class="text-sm text-slate-400 mt-2 leading-relaxed">
+                    @if($totalReports === 0)
+                        No security incidents have been reported in your sector yet. Your neighborhood is currently fully secure, quiet, and peaceful! 🌟
+                    @else
+                        Our AI-driven analytics show that <span class="text-indigo-300 font-bold underline decoration-indigo-500/30">{{ $peakTime }}</span> is currently the peak hour for incidents in your sector. 
+                        Neighborhood safety is <span class="font-bold {{ $trendDirection == 'down' ? 'text-emerald-400' : 'text-amber-400' }}">
+                            {{ $trendDirection == 'down' ? 'Improving' : 'Declining' }} 
+                        </span> 
+                        with a <span class="underline">{{ $trendPercent }}%</span> change compared to last week.
+                    @endif
+                </p>
             </div>
-        </div>
-
-        <!-- Resolution Status Chart -->
-        <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition duration-300">
-            <h3 class="text-lg font-black text-slate-950 font-serif-custom mb-6 flex items-center gap-2">
-                <span class="h-3.5 w-1.5 bg-amber-500 rounded-full"></span>
-                Resolution Status
-            </h3>
-            <div class="relative h-64 w-full flex justify-center">
-                <canvas id="statusChart"></canvas>
+            <div class="flex gap-4">
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                    <span class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Peak Time</span>
+                    <span class="text-xl font-black text-indigo-400">{{ $peakTime }}</span>
+                </div>
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                    <span class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Weekly Trend</span>
+                    <span class="text-xl font-black {{ $trendDirection == 'stable' ? 'text-emerald-400' : ($trendDirection == 'down' ? 'text-emerald-400' : 'text-amber-400') }}">
+                        @if($trendDirection === 'stable')
+                            Stable 🟢
+                        @else
+                            {{ $trendDirection == 'down' ? '↓' : '↑' }} {{ $trendPercent }}%
+                        @endif
+                    </span>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Analytics Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Weekly Trends Chart -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition duration-300">
+            <h3 class="text-lg font-black text-slate-950 font-serif-custom mb-6 flex items-center gap-2">
+                <span class="h-3.5 w-1.5 bg-emerald-500 rounded-full"></span>
+                7-Day Activity Trend
+            </h3>
+            <div class="relative h-64 w-full">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Hourly Distribution Chart -->
+        <div class="bg-white p-6 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-md transition duration-300">
+            <h3 class="text-lg font-black text-slate-950 font-serif-custom mb-6 flex items-center gap-2">
+                <span class="h-3.5 w-1.5 bg-indigo-600 rounded-full"></span>
+                Hourly Distribution
+            </h3>
+            <div class="relative h-64 w-full">
+                <canvas id="hourlyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Existing Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
     <!-- Recent Reports Preview -->
     <div class="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden hover:shadow-md transition duration-300">
@@ -225,7 +269,151 @@
             @endforelse
         </div>
     </div>
+    </div>
 </div>
+
+@if(false)
+<!-- AI Safety Guardian Widget -->
+<div id="ai-guardian-container" class="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
+    <!-- Chat Window -->
+    <div id="ai-chat-window" class="hidden w-[350px] sm:w-[400px] h-[500px] bg-white/90 backdrop-blur-xl border border-slate-200 shadow-2xl rounded-3xl flex-col overflow-hidden mb-4 transition-all duration-300 transform scale-95 opacity-0 origin-bottom-right">
+        <!-- Header -->
+        <div class="bg-slate-900 p-5 text-white flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="relative">
+                    <div class="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                    </div>
+                    <span class="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-full"></span>
+                </div>
+                <div>
+                    <h4 class="font-black text-sm font-serif-custom">Safety Guardian</h4>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">AI Responder Online</span>
+                </div>
+            </div>
+            <button onclick="toggleAIChat()" class="text-slate-400 hover:text-white transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Chat Area -->
+        <div id="ai-chat-messages" class="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50">
+            <!-- Bot Message -->
+            <div class="flex flex-col items-start max-w-[85%]">
+                <div class="bg-white border border-slate-200 p-4 rounded-2xl rounded-tl-none shadow-sm">
+                    <p class="text-sm text-slate-700 leading-relaxed font-medium">Hello, {{ auth()->user()->name }}. I am your AI Safety Guardian. How can I assist you with neighborhood safety or emergency guidance today?</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-4 bg-white border-t border-slate-100">
+            <div class="flex gap-2 mb-3">
+                <button onclick="quickAsk('What to do in a medical emergency?')" class="text-[10px] font-black bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200/60 transition whitespace-nowrap">Medical Help</button>
+                <button onclick="quickAsk('Tips for late night safety.')" class="text-[10px] font-black bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 px-3 py-1.5 rounded-lg border border-slate-200/60 transition whitespace-nowrap">Safety Tips</button>
+            </div>
+            <form id="ai-chat-form" class="relative">
+                <input type="text" id="ai-user-input" placeholder="Type your safety question..." class="w-full bg-slate-100 border-none rounded-2xl py-3 pl-4 pr-12 text-sm font-medium focus:ring-2 focus:ring-indigo-500 transition-all">
+                <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-indigo-600 transition shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toggle Button -->
+    <button onclick="toggleAIChat()" class="w-16 h-16 bg-slate-950 text-white rounded-full flex items-center justify-center shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 group border-4 border-white">
+        <div class="relative">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 group-hover:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            <span class="absolute -top-1 -right-1 w-4 h-4 bg-indigo-500 border-2 border-slate-950 rounded-full animate-ping"></span>
+        </div>
+    </button>
+</div>
+
+<script>
+    function toggleAIChat() {
+        const win = document.getElementById('ai-chat-window');
+        if(win.classList.contains('hidden')) {
+            win.classList.remove('hidden');
+            setTimeout(() => {
+                win.classList.remove('opacity-0', 'scale-95');
+                win.classList.add('opacity-100', 'scale-100');
+            }, 10);
+        } else {
+            win.classList.add('opacity-0', 'scale-95');
+            win.classList.remove('opacity-100', 'scale-100');
+            setTimeout(() => win.classList.add('hidden'), 300);
+        }
+    }
+
+    function quickAsk(msg) {
+        document.getElementById('ai-user-input').value = msg;
+        document.getElementById('ai-chat-form').dispatchEvent(new Event('submit'));
+    }
+
+    document.getElementById('ai-chat-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('ai-user-input');
+        const msg = input.value.trim();
+        if(!msg) return;
+
+        // Add User Message to UI
+        addMessage(msg, 'user');
+        input.value = '';
+
+        // Add Loading Message
+        const loadingId = 'loading-' + Date.now();
+        addMessage('<span class="animate-pulse">Analyzing safety protocols...</span>', 'bot', loadingId);
+
+        try {
+            const response = await fetch('{{ route("ai.chat") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ message: msg })
+            });
+            const data = await response.json();
+            
+            // Remove loading and add actual response
+            document.getElementById(loadingId).remove();
+            addMessage(data.response.replace(/\n/g, '<br>'), 'bot');
+        } catch (err) {
+            document.getElementById(loadingId).innerText = "Emergency protocol failed. Please check connection.";
+        }
+    });
+
+    function addMessage(text, side, id = null) {
+        const chat = document.getElementById('ai-chat-messages');
+        const div = document.createElement('div');
+        div.className = `flex flex-col ${side === 'user' ? 'items-end' : 'items-start'} max-w-[90%] animate-in fade-in slide-in-from-bottom-2 duration-300`;
+        if(id) div.id = id;
+        
+        const contentClass = side === 'user' 
+            ? 'bg-slate-900 text-white rounded-2xl rounded-tr-none' 
+            : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-none';
+            
+        div.innerHTML = `
+            <div class="${contentClass} p-4 shadow-sm">
+                <p class="text-sm leading-relaxed font-medium">${text}</p>
+            </div>
+            <span class="text-[8px] font-black uppercase text-slate-400 mt-1.5 px-1">${side === 'user' ? 'You' : 'Guardian'}</span>
+        `;
+        
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+    }
+</script>
+@endif
 @endsection
 
 @push('scripts')
@@ -234,6 +422,63 @@
     document.addEventListener('DOMContentLoaded', function () {
         const typeData = @json($typeData);
         const statusData = @json($statusData);
+        const hourlyData = @json($fullHourlyData);
+        const weeklyTrend = @json($weeklyTrend);
+
+        // Render Trend Chart (Line)
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: Object.keys(weeklyTrend),
+                datasets: [{
+                    label: 'Incidents',
+                    data: Object.values(weeklyTrend),
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 3,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#10b981',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1, color: '#64748b' }, grid: { color: '#f1f5f9' } },
+                    x: { ticks: { color: '#64748b', font: { weight: '600' } }, grid: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // Render Hourly Chart (Bar)
+        const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');
+        new Chart(hourlyCtx, {
+            type: 'bar',
+            data: {
+                labels: Array.from({length: 24}, (_, i) => i + ':00'),
+                datasets: [{
+                    label: 'Incidents',
+                    data: Object.values(hourlyData),
+                    backgroundColor: '#4f46e5',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1, color: '#64748b' }, grid: { color: '#f1f5f9' } },
+                    x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
 
         // Sophisticated Color Palette (Trustworthy & Mature)
         const typeColors = {
@@ -315,6 +560,32 @@
                 }
             }
         });
+    });
+
+    // Number Counter Animation
+    const counters = document.querySelectorAll('.counter');
+    const speed = 200;
+
+    counters.forEach(counter => {
+        const animate = () => {
+            const value = +counter.getAttribute('data-target');
+            const data = +counter.innerText;
+            const time = value / speed;
+
+            if (data < value) {
+                counter.innerText = Math.ceil(data + time);
+                setTimeout(animate, 1);
+            } else {
+                counter.innerText = value;
+            }
+        };
+        
+        // Trigger only when visible
+        const observer = new IntersectionObserver((entries) => {
+            if(entries[0].isIntersecting) animate();
+        }, { threshold: 0.5 });
+        
+        observer.observe(counter);
     });
 </script>
 @endpush

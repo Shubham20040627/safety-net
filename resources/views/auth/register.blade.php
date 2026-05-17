@@ -34,13 +34,18 @@
             <x-input-error :messages="$errors->get('password')" class="mt-2 text-sm text-red-600" />
         </div>
 
-        <!-- Confirm Password -->
+        <!-- Neighborhood Selection -->
         <div>
-            <label for="password_confirmation" class="block text-sm font-bold text-slate-700 mb-2">Confirm Password</label>
-            <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password" 
-                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none transition-all bg-white" 
-                placeholder="Repeat your password">
-            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2 text-sm text-red-600" />
+            <label for="neighborhood_name" class="block text-sm font-bold text-slate-700 mb-2">Select Your Neighborhood</label>
+            <select id="neighborhood_name" name="neighborhood_name" required 
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-slate-900 focus:ring-1 focus:ring-slate-900 outline-none transition-all bg-white font-semibold text-slate-700">
+                <option value="" disabled selected>Select neighborhood safety net...</option>
+                @foreach($neighborhoods as $nh)
+                    <option value="{{ $nh }}">{{ $nh }}</option>
+                @endforeach
+            </select>
+            <x-input-error :messages="$errors->get('neighborhood_name')" class="mt-2 text-sm text-red-600" />
+            <p class="text-xs text-slate-400 mt-1">If your neighborhood is not listed, local authorities must first register your area.</p>
         </div>
 
         <div class="pt-2">
@@ -53,5 +58,9 @@
     <div class="mt-8 text-center text-sm text-slate-600">
         Already have an account? 
         <a href="{{ route('login') }}" class="font-bold text-indigo-700 hover:text-indigo-600 transition-colors">Log in</a>
+        <span class="block mt-2">
+            Are you a local authority? 
+            <a href="{{ route('admin.register') }}" class="font-bold text-indigo-700 hover:text-indigo-600 transition-colors">Admin Registration</a>
+        </span>
     </div>
 </x-guest-layout>

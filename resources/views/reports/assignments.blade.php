@@ -1,35 +1,42 @@
 @extends('layouts.app')
 
-@section('header_title', 'Manage Reports')
+@section('header_title', auth()->user()->role === 'admin' ? 'Active Dispatches' : 'My Assignments')
 
 @section('content')
 <div class="space-y-6">
     <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100">
-        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
-            <div>
-                <h3 class="text-lg font-bold text-gray-800">All Reported Incidents</h3>
-                <p class="text-sm text-gray-500">Monitor and resolve neighborhood incidents.</p>
-            </div>
+        <div class="p-6 border-b border-gray-100">
+            <h3 class="text-lg font-bold text-gray-800">{{ auth()->user()->role === 'admin' ? 'Active Responder Dispatches' : 'Incidents Assigned to You' }}</h3>
+            <p class="text-sm text-gray-500">{{ auth()->user()->role === 'admin' ? 'Monitor current response operations in the neighborhood.' : 'Investigate and resolve these incidents.' }}</p>
         </div>
         
         <table class="w-full text-left">
             <thead class="bg-gray-50 border-b border-gray-100">
                 <tr>
                     <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Report</th>
+                    @if(auth()->user()->role === 'admin')
+                        <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Assigned Responder</th>
+                    @endif
                     <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
                     <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Priority</th>
-                    <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reporter</th>
                     <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-                @foreach($reports as $report)
+                @forelse($reports as $report)
                     <tr class="hover:bg-gray-50 transition">
                         <td class="px-6 py-4">
                             <div class="font-bold text-gray-800">{{ $report->title }}</div>
                             <div class="text-[10px] text-gray-400 mt-0.5">{{ $report->location }} | {{ \Carbon\Carbon::parse($report->datetime)->format('M d, Y') }}</div>
                         </td>
+                        @if(auth()->user()->role === 'admin')
+                            <td class="px-6 py-4">
+                                <span class="text-sm font-semibold text-gray-700">
+                                    {{ $report->responder ? $report->responder->name : 'Unassigned' }}
+                                </span>
+                            </td>
+                        @endif
                         <td class="px-6 py-4">
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase
                                 {{ $report->type == 'crime' ? 'bg-red-100 text-red-600' : '' }}
@@ -49,23 +56,18 @@
                             </span>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm font-medium text-gray-700">{{ $report->user->name }}</div>
-                        </td>
-                        <td class="px-6 py-4">
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase 
-                                {{ $report->status == 'resolved' ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600' }}">
+                                {{ $report->status == 'resolved' ? 'bg-green-100 text-green-600' : 'bg-indigo-100 text-indigo-600' }}">
                                 {{ $report->status }}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-right">
-                                <div class="flex justify-end gap-2">
-                                    <a href="{{ route('reports.pdf', $report) }}" class="bg-slate-700 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        PDF
-                                    </a>
+                            <div class="flex justify-end gap-2">
+                                <a href="{{ route('reports.show', $report) }}" class="bg-white hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-gray-200 transition shadow-sm">
+                                    View Details
+                                </a>
 
+                                @if($report->status !== 'resolved')
                                     @if($report->latitude && $report->longitude)
                                         <a href="https://www.google.com/maps/dir/?api=1&destination={{ $report->latitude }},{{ $report->longitude }}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -76,41 +78,32 @@
                                         </a>
                                     @endif
 
-                                    @if($report->status !== 'resolved')
-                                        <form action="{{ route('admin.reports.assign-responder', $report) }}" method="POST" class="flex items-center gap-1 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                                            @csrf
-                                            <select name="responder_id" class="text-xs border-none bg-gray-50 focus:ring-0 py-1.5 pl-2 pr-6 h-full" required>
-                                                <option value="">Assign Responder</option>
-                                                @foreach($responders as $responder)
-                                                    <option value="{{ $responder->id }}" {{ $report->responder_id == $responder->id ? 'selected' : '' }}>
-                                                        {{ $responder->name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                            <button type="submit" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 text-xs font-bold transition h-full border-l border-indigo-600">
-                                                Assign
-                                            </button>
-                                        </form>
-
-                                        <form action="{{ route('admin.reports.resolve', $report) }}" method="POST">
-                                            @csrf
-                                            <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">
-                                                Resolve
-                                            </button>
-                                        </form>
-                                    @endif
-                                
-                                <form action="{{ route('admin.reports.delete', $report) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this report?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm">
-                                        Delete
-                                    </button>
-                                </form>
+                                    <form action="{{ route('reports.resolve-assigned', $report) }}" method="POST" onsubmit="return confirm('Are you sure you want to mark this incident as resolved?')">
+                                        @csrf
+                                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Mark Resolved
+                                        </button>
+                                    </form>
+                                @endif
                             </div>
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="{{ auth()->user()->role === 'admin' ? 6 : 5 }}" class="px-6 py-8 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                </svg>
+                                <span class="font-medium text-sm">{{ auth()->user()->role === 'admin' ? 'No active dispatches' : 'No active assignments' }}</span>
+                                <span class="text-xs text-gray-400 mt-1">{{ auth()->user()->role === 'admin' ? 'There are currently no active dispatches in the community.' : 'You currently have no incidents assigned to you.' }}</span>
+                            </div>
+                        </td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
     </div>

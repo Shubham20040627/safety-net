@@ -23,6 +23,10 @@ class User extends Authenticatable
         'password',
         'role',
         'status',
+        'neighborhood_name',
+        'neighborhood_lat',
+        'neighborhood_lng',
+        'neighborhood_boundary',
     ];
 
     /**
@@ -48,5 +52,10 @@ class User extends Authenticatable
     public function reports()
     {
         return $this->hasMany(Report::class);
+    }
+
+    public function assignedReports()
+    {
+        return $this->hasMany(Report::class, 'responder_id');
     }
 }

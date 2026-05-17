@@ -16,17 +16,40 @@
         
         <style>
             .font-serif-custom { font-family: 'Merriweather', serif; }
+            
+            /* Sexy Entrance Animations */
+            @keyframes slideUpFade {
+                0% { opacity: 0; transform: translateY(30px) scale(0.98); }
+                100% { opacity: 1; transform: translateY(0) scale(1); }
+            }
+
+            @keyframes imageZoom {
+                0% { transform: scale(1.1); filter: blur(10px); }
+                100% { transform: scale(1); filter: blur(0); }
+            }
+
+            .animate-slide-up {
+                animation: slideUpFade 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+
+            .animate-image-entrance {
+                animation: imageZoom 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+
+            .stagger-1 { animation-delay: 0.1s; }
+            .stagger-2 { animation-delay: 0.2s; }
+            .stagger-3 { animation-delay: 0.3s; }
         </style>
     </head>
-    <body class="font-sans text-gray-900 antialiased bg-white">
+    <body class="font-sans text-gray-900 antialiased bg-white overflow-x-hidden overflow-y-auto lg:overflow-hidden">
         <div class="min-h-screen flex">
             <!-- Left Side: Real Photography (Consistent with landing page) -->
-            <div class="hidden lg:block lg:w-1/2 relative">
+            <div class="hidden lg:block lg:w-1/2 relative overflow-hidden">
                 <img src="{{ asset('images/branding/auth_real.png') }}" 
                      alt="Peaceful Neighborhood" 
-                     class="w-full h-full object-cover">
+                     class="w-full h-full object-cover animate-image-entrance">
                 <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] flex items-center justify-center p-12">
-                    <div class="max-w-md text-white">
+                    <div class="max-w-md text-white animate-slide-up stagger-1">
                         <div class="w-12 h-12 bg-white text-slate-900 rounded-full flex items-center justify-center mb-8 shadow-lg">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -41,8 +64,8 @@
             </div>
 
             <!-- Right Side: Form Content -->
-            <div class="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 lg:p-24 relative bg-slate-50 lg:bg-white">
-                <div class="w-full max-w-md">
+            <div class="w-full lg:w-1/2 flex justify-center p-8 sm:p-12 lg:p-20 relative bg-slate-50 lg:bg-white overflow-y-auto h-screen">
+                <div class="w-full max-w-md my-auto animate-slide-up stagger-2 py-8">
                     <!-- Mobile Logo (Hidden on desktop) -->
                     <div class="lg:hidden flex items-center gap-3 mb-8">
                         <div class="w-10 h-10 bg-slate-900 text-white rounded-full flex items-center justify-center">

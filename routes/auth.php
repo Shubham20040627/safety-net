@@ -17,6 +17,17 @@ Route::middleware('guest')->group(function () {
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
+    Route::get('admin/register', [RegisteredUserController::class, 'createAdmin'])
+                ->name('admin.register');
+
+    Route::post('admin/register', [RegisteredUserController::class, 'storeAdmin']);
+
+    // Secret Super Admin portal routes
+    Route::get('system-nexus', [AuthenticatedSessionController::class, 'createSuperAdmin'])
+                ->name('superadmin.login');
+
+    Route::post('system-nexus', [AuthenticatedSessionController::class, 'storeSuperAdmin']);
+
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
                 ->name('login');
 

@@ -78,20 +78,20 @@
 
                 <!-- Image Upload -->
                 <div class="md:col-span-2">
-                    <label for="image" class="block text-sm font-semibold text-gray-700 mb-2">Upload Image (Optional)</label>
-                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-indigo-500 transition-colors cursor-pointer group">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Upload Image (Optional)</label>
+                    <div onclick="document.getElementById('image').click()" class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-indigo-500 hover:bg-indigo-50/30 transition-all cursor-pointer group">
                         <div class="space-y-1 text-center">
                             <svg class="mx-auto h-12 w-12 text-gray-400 group-hover:text-indigo-500 transition-colors" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
                                 <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                             </svg>
                             <div class="flex text-sm text-gray-600">
-                                <label for="image" class="relative cursor-pointer rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none">
-                                    <span>Upload a file</span>
-                                    <input id="image" name="image" type="file" class="sr-only">
-                                </label>
-                                <p class="pl-1">or drag and drop</p>
+                                <span class="relative rounded-md font-medium text-indigo-600 group-hover:text-indigo-500">
+                                    <span>Upload an image</span>
+                                    <input id="image" name="image" type="file" class="hidden" onchange="updateFileName(this, 'image-name')">
+                                </span>
+                                <p class="pl-1 text-gray-400">or drag and drop</p>
                             </div>
-                            <p class="text-xs text-gray-500">PNG, JPG, GIF up to 2MB</p>
+                            <p id="image-name" class="text-xs text-indigo-500 font-bold mt-2"></p>
                         </div>
                     </div>
                     @error('image') <p class="text-red-500 text-xs mt-1">{{ $message }}</p> @enderror
@@ -113,12 +113,18 @@
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Initialize MapLibre Map with Google Streets style using your MapTiler Key
+            // Geofence Configuration
+            var neighborhoodLat = {{ $neighborhoodLat }};
+            var neighborhoodLng = {{ $neighborhoodLng }};
+            var neighborhoodName = "{{ $neighborhoodName }}";
+            var neighborhoodBoundaryJson = {!! $neighborhoodBoundary ? $neighborhoodBoundary : 'null' !!};
+
+            // Initialize MapLibre Map centered on neighborhood center
             var map = new maplibregl.Map({
                 container: 'map',
                 style: 'https://api.maptiler.com/maps/streets-v2/style.json?key={{ config('services.maptiler.key') }}', 
-                center: [-74.0060, 40.7128], // [Lng, Lat] default New York
-                zoom: 13,
+                center: [neighborhoodLng, neighborhoodLat], // [Lng, Lat]
+                zoom: 14,
                 pitch: 45, // Tilted 3D perspective by default
                 bearing: -17.6
             });
@@ -136,12 +142,7 @@
             });
             map.addControl(geolocate);
 
-            // Automatically geolocate on load
-            map.on('load', function() {
-                geolocate.trigger();
-            });
-
-            // Enable 3D Buildings on load when zooming in close
+            // Enable 3D Buildings & Paint Admin Neighborhood Boundary Layer
             map.on('load', function () {
                 var layers = map.getStyle().layers;
                 var labelLayerId;
@@ -152,6 +153,7 @@
                     }
                 }
 
+                // 3D Buildings Layer
                 map.addLayer({
                     'id': '3d-buildings',
                     'source': 'openmaptiles',
@@ -173,7 +175,84 @@
                         'fill-extrusion-opacity': 0.8
                     }
                 }, labelLayerId);
+
+                // Add Highlighted Admin Neighborhood Polygon Layer if defined
+                if (neighborhoodBoundaryJson) {
+                    map.addSource('neighborhood-boundary', {
+                        type: 'geojson',
+                        data: neighborhoodBoundaryJson
+                    });
+
+                    // Semi-transparent indigo overlay
+                    map.addLayer({
+                        id: 'boundary-fill',
+                        type: 'fill',
+                        source: 'neighborhood-boundary',
+                        paint: {
+                            'fill-color': '#4f46e5',
+                            'fill-opacity': 0.22
+                        }
+                    });
+
+                    // Thicker vibrant neon border line
+                    map.addLayer({
+                        id: 'boundary-line',
+                        type: 'line',
+                        source: 'neighborhood-boundary',
+                        paint: {
+                            'line-color': '#6366f1',
+                            'line-width': 4
+                        }
+                    });
+
+                    // Fit Map view perfectly to contain the boundary coordinates
+                    try {
+                        var coordinates = neighborhoodBoundaryJson.features[0].geometry.coordinates[0];
+                        var bounds = coordinates.reduce(function (bounds, coord) {
+                            return bounds.extend(coord);
+                        }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+
+                        map.fitBounds(bounds, {
+                            padding: 40,
+                            maxZoom: 16
+                        });
+                    } catch (err) {
+                        console.error('Error fitting bounds:', err);
+                    }
+                }
             });
+
+            // Point in Polygon Check (Ray-Casting Algorithm)
+            function isPointInPolygon(point, polygonCoords) {
+                var x = point[0], y = point[1];
+                var inside = false;
+                for (var i = 0, j = polygonCoords.length - 1; i < polygonCoords.length; j = i++) {
+                    var xi = polygonCoords[i][0], yi = polygonCoords[i][1];
+                    var xj = polygonCoords[j][0], yj = polygonCoords[j][1];
+                    var intersect = ((yi > y) != (yj > y))
+                        && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                    if (intersect) inside = !inside;
+                }
+                return inside;
+            }
+
+            function isPointInGeofence(lng, lat) {
+                if (!neighborhoodBoundaryJson || !neighborhoodBoundaryJson.features || neighborhoodBoundaryJson.features.length === 0) {
+                    return true; // No boundary configured, permit freely
+                }
+                var point = [lng, lat];
+                var feature = neighborhoodBoundaryJson.features[0];
+                if (feature.geometry.type === 'Polygon') {
+                    return isPointInPolygon(point, feature.geometry.coordinates[0]);
+                } else if (feature.geometry.type === 'MultiPolygon') {
+                    for (var i = 0; i < feature.geometry.coordinates.length; i++) {
+                        if (isPointInPolygon(point, feature.geometry.coordinates[i][0])) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
 
             var marker;
             var latInput = document.getElementById('latitude');
@@ -188,14 +267,12 @@
                     .then(response => response.json())
                     .then(data => {
                         if(data.display_name) {
-                            // Extract a shorter, friendlier address if possible, otherwise use full
                             var address = data.address;
                             var shortAddress = "";
                             if(address.road) shortAddress += address.road;
                             if(address.suburb || address.city || address.town || address.village) {
                                 shortAddress += (shortAddress ? ", " : "") + (address.suburb || address.city || address.town || address.village);
                             }
-                            
                             locationInput.value = shortAddress || data.display_name;
                         }
                     })
@@ -207,8 +284,14 @@
 
             // When clicking the map
             map.on('click', function(e) {
-                var lat = e.lngLat.lat.toFixed(6);
-                var lng = e.lngLat.lng.toFixed(6);
+                var lat = parseFloat(e.lngLat.lat.toFixed(6));
+                var lng = parseFloat(e.lngLat.lng.toFixed(6));
+
+                // Geofence Validation
+                if (!isPointInGeofence(lng, lat)) {
+                    alert(`🚫 Geofence Restriction!\n\nYou must only report incidents inside your neighborhood's registered boundary (${neighborhoodName || 'Assigned Zone'}).\n\nPlease click inside the highlighted region.`);
+                    return;
+                }
 
                 if (marker) {
                     marker.setLngLat([lng, lat]);
@@ -221,17 +304,25 @@
                 latInput.value = lat;
                 lngInput.value = lng;
                 
-                // Automatically fetch and fill the location text box!
                 getAddressFromCoords(lat, lng);
             });
 
-            // When typing in the latitude/longitude boxes
+            // When typing in the latitude/longitude boxes manually
             let timeoutId;
             function updateMapFromInputs() {
                 var lat = parseFloat(latInput.value);
                 var lng = parseFloat(lngInput.value);
 
                 if (!isNaN(lat) && !isNaN(lng)) {
+                    // Geofence Validation for Manual inputs
+                    if (!isPointInGeofence(lng, lat)) {
+                        alert(`🚫 Outside Boundary Alert!\n\nThe coordinates entered are outside your neighborhood (${neighborhoodName || 'Assigned Zone'}). Please select a location within the boundary.`);
+                        latInput.value = '';
+                        lngInput.value = '';
+                        if (marker) marker.remove();
+                        return;
+                    }
+
                     if (marker) {
                         marker.setLngLat([lng, lat]);
                     } else {
@@ -240,9 +331,8 @@
                             .addTo(map);
                     }
                     map.setCenter([lng, lat]);
-                    map.setZoom(15); // Zoom into the typed location
+                    map.setZoom(16);
                     
-                    // Add a small delay so we don't spam the API while typing
                     clearTimeout(timeoutId);
                     timeoutId = setTimeout(() => {
                         getAddressFromCoords(lat, lng);
@@ -252,9 +342,13 @@
 
             latInput.addEventListener('input', updateMapFromInputs);
             lngInput.addEventListener('input', updateMapFromInputs);
-            
-            // User location is now automatically geolocated and centered via GeolocateControl above.
         });
+
+        // Function to show file name after selection
+        function updateFileName(input, targetId) {
+            const fileName = input.files[0] ? input.files[0].name : '';
+            document.getElementById(targetId).textContent = fileName ? '✓ Selected: ' + fileName : '';
+        }
     </script>
 @endpush
 

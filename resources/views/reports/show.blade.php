@@ -116,12 +116,62 @@
                             {{ $report->description }}
                         </p>
                     </div>
+
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Right: Interactive Pin Map & Safety Advisories -->
         <div class="space-y-6">
+            <!-- Dispatch / Volunteer Status Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-md border border-gray-100">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Dispatch Details
+                </h3>
+
+                @if($report->responder)
+                    <div class="flex items-center gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div class="h-10 w-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                            {{ substr($report->responder->name, 0, 1) }}
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400">Assigned Responder</p>
+                            <p class="font-bold text-gray-800">{{ $report->responder->name }}</p>
+                        </div>
+                    </div>
+
+                    @if($report->status !== 'resolved' && (auth()->user()->role === 'admin' || auth()->id() === $report->responder_id))
+                        <form action="{{ route('reports.resolve-assigned', $report) }}" method="POST" class="mt-4">
+                            @csrf
+                            <button type="submit" class="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-indigo-500/20 active:scale-[0.98]">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Resolve Incident
+                            </button>
+                        </form>
+                    @endif
+                @else
+                    <div class="bg-amber-50 p-4 rounded-xl border border-amber-100 text-center">
+                        <p class="text-sm text-amber-800 font-semibold">No Responder Dispatched Yet</p>
+                        <p class="text-xs text-amber-600 mt-1">This report is pending response.</p>
+                    </div>
+
+                    @if(auth()->user()->role === 'responder')
+                        <form action="{{ route('reports.volunteer', $report) }}" method="POST" class="mt-4">
+                            @csrf
+                            <button type="submit" class="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-indigo-500/20 active:scale-[0.98]">
+                                🙋 Volunteer to Respond
+                            </button>
+                        </form>
+                    @endif
+                @endif
+            </div>
+
             <!-- Location Map Card -->
             <div class="bg-white p-5 rounded-2xl shadow-md border border-gray-100">
                 <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
@@ -133,9 +183,19 @@
                 
                 @if($report->latitude && $report->longitude)
                     <div id="incident-map" class="w-full border border-gray-200 mb-4"></div>
-                    <div class="text-xs text-gray-400 font-semibold space-y-1">
-                        <p>Latitude: <span class="text-gray-600 font-mono">{{ $report->latitude }}</span></p>
-                        <p>Longitude: <span class="text-gray-600 font-mono">{{ $report->longitude }}</span></p>
+                    <div class="flex flex-col gap-3">
+                        <div class="text-xs text-gray-400 font-semibold space-y-1">
+                            <p>Latitude: <span class="text-gray-600 font-mono">{{ $report->latitude }}</span></p>
+                            <p>Longitude: <span class="text-gray-600 font-mono">{{ $report->longitude }}</span></p>
+                        </div>
+                        
+                        <a href="https://www.google.com/maps/dir/?api=1&destination={{ $report->latitude }},{{ $report->longitude }}" target="_blank" class="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-emerald-500/20 active:scale-[0.98]">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Navigate to Scene
+                        </a>
                     </div>
                 @else
                     <div class="h-48 bg-slate-50 flex flex-col items-center justify-center text-gray-400 rounded-lg border border-dashed border-gray-200 text-center p-6">

@@ -5,12 +5,36 @@ namespace App\Http\Controllers;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportController extends Controller
 {
     public function index(Request $request)
     {
         $query = Report::with('user');
+
+        // Filter by user's neighborhood if logged in and not super_admin
+        $neighborhoodLat = 37.7749;
+        $neighborhoodLng = -122.4194;
+        $neighborhoodBoundary = null;
+        $neighborhoodName = null;
+
+        if (auth()->check() && auth()->user()->role !== 'super_admin') {
+            $neighborhoodName = auth()->user()->neighborhood_name;
+            $query->whereHas('user', function($q) use ($neighborhoodName) {
+                $q->where('neighborhood_name', $neighborhoodName);
+            });
+
+            // Fetch the Admin who registered this neighborhood to get coordinates and boundary
+            $admin = \App\Models\User::where('role', 'admin')
+                ->where('neighborhood_name', $neighborhoodName)
+                ->first();
+            if ($admin) {
+                $neighborhoodLat = $admin->neighborhood_lat;
+                $neighborhoodLng = $admin->neighborhood_lng;
+                $neighborhoodBoundary = $admin->neighborhood_boundary;
+            }
+        }
 
         if ($request->has('lat') && $request->has('lng')) {
             $lat = (float) $request->lat;
@@ -39,12 +63,23 @@ class ReportController extends Controller
 
         $reports = $query->paginate(10)->withQueryString();
 
-        return view('reports.index', compact('reports'));
+        return view('reports.index', compact('reports', 'neighborhoodLat', 'neighborhoodLng', 'neighborhoodBoundary', 'neighborhoodName'));
     }
 
     public function create()
     {
-        return view('reports.create');
+        $neighborhoodName = auth()->user()->neighborhood_name;
+        
+        // Find the admin user who registered this neighborhood to get coordinates and boundary
+        $admin = \App\Models\User::where('role', 'admin')
+            ->where('neighborhood_name', $neighborhoodName)
+            ->first();
+
+        $neighborhoodLat = $admin ? $admin->neighborhood_lat : 37.7749;
+        $neighborhoodLng = $admin ? $admin->neighborhood_lng : -122.4194;
+        $neighborhoodBoundary = $admin ? $admin->neighborhood_boundary : null;
+
+        return view('reports.create', compact('neighborhoodLat', 'neighborhoodLng', 'neighborhoodBoundary', 'neighborhoodName'));
     }
 
     public function store(Request $request)
@@ -57,18 +92,71 @@ class ReportController extends Controller
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'datetime' => 'required|date',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
         ]);
 
-        $data = $request->all();
+        $data = $request->except('image');
         $data['user_id'] = auth()->id();
         $data['status'] = 'pending';
 
+        // Smart Threat Prioritization Logic
+        $priorityMapping = [
+            'crime' => 'high',
+            'accident' => 'critical',
+            'suspicious' => 'medium',
+            'other' => 'low'
+        ];
+        $data['priority'] = $priorityMapping[$request->type] ?? 'low';
+
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('reports', 'public');
+            $file = $request->file('image');
+            
+            // Smart WebP Compression using GD Library (95%+ file size reduction)
+            if (extension_loaded('gd')) {
+                $imageInfo = getimagesize($file->getRealPath());
+                if ($imageInfo) {
+                    $mime = $imageInfo['mime'];
+                    $src = null;
+                    if ($mime == 'image/jpeg' || $mime == 'image/jpg') {
+                        $src = @imagecreatefromjpeg($file->getRealPath());
+                    } elseif ($mime == 'image/png') {
+                        $src = @imagecreatefrompng($file->getRealPath());
+                    }
+
+                    if ($src) {
+                        // Ensure reports directory exists
+                        if (!Storage::disk('public')->exists('reports')) {
+                            Storage::disk('public')->makeDirectory('reports');
+                        }
+
+                        $filename = 'reports/' . uniqid() . '.webp';
+                        $path = storage_path('app/public/' . $filename);
+                        
+                        // Convert & compress to webp format at 80% quality
+                        if (imagewebp($src, $path, 80)) {
+                            $data['image'] = $filename;
+                        } else {
+                            $data['image'] = $file->store('reports', 'public');
+                        }
+                        imagedestroy($src);
+                    } else {
+                        $data['image'] = $file->store('reports', 'public');
+                    }
+                } else {
+                    $data['image'] = $file->store('reports', 'public');
+                }
+            } else {
+                $data['image'] = $file->store('reports', 'public');
+            }
         }
 
-        Report::create($data);
+        $report = Report::create($data);
+
+        // Clear dashboard cache to show fresh data instantly
+        cache()->forget("dashboard_stats_" . auth()->user()->neighborhood_name);
+
+        // Fire real-time notification
+        event(new \App\Events\IncidentReported($report));
 
         return redirect()->route('reports.index')->with('success', 'Incident reported successfully.');
     }
@@ -79,9 +167,98 @@ class ReportController extends Controller
         return view('reports.my-reports', compact('reports'));
     }
 
+    public function assignments()
+    {
+        $user = auth()->user();
+        if ($user->role !== 'responder' && $user->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $neighborhoodName = $user->neighborhood_name;
+
+        if ($user->role === 'admin') {
+            // Admins can see all active assignments across responders in their own neighborhood
+            $reports = Report::whereNotNull('responder_id')
+                ->whereHas('user', function($q) use ($neighborhoodName) {
+                    $q->where('neighborhood_name', $neighborhoodName);
+                })
+                ->with('responder', 'user')->latest()->paginate(10);
+        } else {
+            // Responders see only their own assignments
+            $reports = $user->assignedReports()->with('user')->latest()->paginate(10);
+        }
+
+        return view('reports.assignments', compact('reports'));
+    }
+
+    public function resolveAssigned(Report $report)
+    {
+        $user = auth()->user();
+        if ($user->role !== 'admin' && ($user->role !== 'responder' || $user->id !== $report->responder_id)) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $report->update(['status' => 'resolved']);
+        return back()->with('success', 'Incident marked as resolved.');
+    }
+
+    public function volunteer(Report $report)
+    {
+        if (auth()->user()->role !== 'responder') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($report->responder_id !== null) {
+            return back()->with('error', 'This incident is already assigned to a responder.');
+        }
+
+        $report->update([
+            'responder_id' => auth()->id(),
+            'status' => 'investigating'
+        ]);
+
+        return back()->with('success', 'You have successfully volunteered to respond to this incident!');
+    }
+
     public function show(Report $report)
     {
-        $report->load('user');
+        $report->load('user', 'responder');
         return view('reports.show', compact('report'));
+    }
+
+    public function downloadPDF(Report $report)
+    {
+        // Check if user is authorized (Admin or the person who reported it)
+        if (auth()->user()->role !== 'admin' && auth()->id() !== $report->user_id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $report->load('user');
+        $pdf = Pdf::loadView('reports.pdf', compact('report'));
+        
+        return $pdf->download('Incident-Report-'.$report->id.'.pdf');
+    }
+
+    public function heatmap()
+    {
+        $neighborhoodName = auth()->user()->neighborhood_name;
+
+        // Fetch the Admin who registered this neighborhood to get coordinates and boundary
+        $admin = \App\Models\User::where('role', 'admin')
+            ->where('neighborhood_name', $neighborhoodName)
+            ->first();
+
+        $neighborhoodLat = $admin ? $admin->neighborhood_lat : 37.7749;
+        $neighborhoodLng = $admin ? $admin->neighborhood_lng : -122.4194;
+        $neighborhoodBoundary = $admin ? $admin->neighborhood_boundary : null;
+
+        // Get all reports with coordinates within the user's neighborhood
+        $reports = Report::whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->whereHas('user', function($q) use ($neighborhoodName) {
+                $q->where('neighborhood_name', $neighborhoodName);
+            })->get();
+
+        return view('reports.heatmap', compact('reports', 'neighborhoodLat', 'neighborhoodLng', 'neighborhoodBoundary', 'neighborhoodName'));
     }
 }
