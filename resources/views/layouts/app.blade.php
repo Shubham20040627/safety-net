@@ -297,13 +297,13 @@
                 </nav>
             </div>
 
-            <div :class="sidebarHovered ? 'md:pl-64' : 'md:pl-0'" class="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
+            <div class="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out">
                 <!-- Invisible Left Edge Activation Zone -->
                 <div @mouseenter="sidebarHovered = true" class="fixed top-0 left-0 h-screen w-3.5 z-45 hidden md:block"></div>
 
                 <!-- Top Navbar -->
                 <header class="glass-header border-b border-white/20 h-16 flex items-center justify-between px-4 md:px-8 sticky top-0 z-40">
-                    <div class="flex items-center gap-4 md:pl-14">
+                    <div class="flex items-center gap-4">
                         <button @click="mobileMenuOpen = true" class="md:hidden p-2 rounded-lg hover:bg-gray-100 transition">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -311,7 +311,7 @@
                         </button>
 
                         <!-- Desktop Hover Sidebar Trigger (Three Dots) -->
-                        <button @mouseenter="sidebarHovered = true" @click="sidebarHovered = !sidebarHovered" class="fixed top-3 left-4 z-45 hidden md:flex p-2.5 rounded-xl bg-slate-900 text-white hover:bg-indigo-600 transition shadow flex-shrink-0 items-center justify-center cursor-pointer border border-slate-700/50">
+                        <button @mouseenter="sidebarHovered = true" @click="sidebarHovered = !sidebarHovered" class="hidden md:flex p-2.5 rounded-xl bg-slate-900 text-white hover:bg-indigo-600 transition shadow flex-shrink-0 items-center justify-center cursor-pointer border border-slate-700/50">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
                             </svg>
@@ -344,31 +344,34 @@
                     </div>
                 </header>
 
-                <!-- Flash Messages -->
-                <div class="px-4 md:px-8 mt-6">
-                    @if(session('success'))
-                        <div class="bg-green-100 border border-green-200 text-green-700 p-4 rounded-xl shadow-sm flex items-center gap-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                            </svg>
-                            {{ session('success') }}
-                        </div>
-                    @endif
+                <!-- Shifting Main Content Wrapper -->
+                <div :class="sidebarHovered ? 'md:pl-64' : 'md:pl-0'" class="flex-1 flex flex-col transition-all duration-300 ease-in-out">
+                    <!-- Flash Messages -->
+                    <div class="px-4 md:px-8 mt-6">
+                        @if(session('success'))
+                            <div class="bg-green-100 border border-green-200 text-green-700 p-4 rounded-xl shadow-sm flex items-center gap-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                                {{ session('success') }}
+                            </div>
+                        @endif
 
-                    @if(session('error'))
-                        <div class="bg-red-100 border border-red-200 text-red-700 p-4 rounded-xl shadow-sm flex items-center gap-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                            {{ session('error') }}
-                        </div>
-                    @endif
+                        @if(session('error'))
+                            <div class="bg-red-100 border border-red-200 text-red-700 p-4 rounded-xl shadow-sm flex items-center gap-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                                {{ session('error') }}
+                            </div>
+                        @endif
+                    </div>
+
+                    <!-- Main Content -->
+                    <main class="p-4 md:p-8 flex-1">
+                        @yield('content')
+                    </main>
                 </div>
-
-                <!-- Main Content -->
-                <main class="p-4 md:p-8 flex-1">
-                    @yield('content')
-                </main>
             </div>
         </div>
 
